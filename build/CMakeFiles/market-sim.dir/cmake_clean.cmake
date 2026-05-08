@@ -1,4 +1,6 @@
 file(REMOVE_RECURSE
+  "CMakeFiles/market-sim.dir/src/OrderBook.cpp.o"
+  "CMakeFiles/market-sim.dir/src/OrderBook.cpp.o.d"
   "CMakeFiles/market-sim.dir/src/PriceEngine.cpp.o"
   "CMakeFiles/market-sim.dir/src/PriceEngine.cpp.o.d"
   "CMakeFiles/market-sim.dir/src/main.cpp.o"

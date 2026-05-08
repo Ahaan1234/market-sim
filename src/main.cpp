@@ -32,6 +32,8 @@ int main() {
         assert(trades2[1].price    == 102.0);
         assert(trades2[1].quantity == 2.0);
         assert(book.bestAsk()      == 102.0);  // 101 level fully consumed
+        
+        book.printBook();
     }
     // --- end tests ---
 

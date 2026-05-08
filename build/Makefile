@@ -129,6 +129,30 @@ market-sim/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/market-sim.dir/build.make CMakeFiles/market-sim.dir/build
 .PHONY : market-sim/fast
 
+src/OrderBook.o: src/OrderBook.cpp.o
+.PHONY : src/OrderBook.o
+
+# target to build an object file
+src/OrderBook.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/market-sim.dir/build.make CMakeFiles/market-sim.dir/src/OrderBook.cpp.o
+.PHONY : src/OrderBook.cpp.o
+
+src/OrderBook.i: src/OrderBook.cpp.i
+.PHONY : src/OrderBook.i
+
+# target to preprocess a source file
+src/OrderBook.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/market-sim.dir/build.make CMakeFiles/market-sim.dir/src/OrderBook.cpp.i
+.PHONY : src/OrderBook.cpp.i
+
+src/OrderBook.s: src/OrderBook.cpp.s
+.PHONY : src/OrderBook.s
+
+# target to generate assembly for a file
+src/OrderBook.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/market-sim.dir/build.make CMakeFiles/market-sim.dir/src/OrderBook.cpp.s
+.PHONY : src/OrderBook.cpp.s
+
 src/PriceEngine.o: src/PriceEngine.cpp.o
 .PHONY : src/PriceEngine.o
 
@@ -186,6 +210,9 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... market-sim"
+	@echo "... src/OrderBook.o"
+	@echo "... src/OrderBook.i"
+	@echo "... src/OrderBook.s"
 	@echo "... src/PriceEngine.o"
 	@echo "... src/PriceEngine.i"
 	@echo "... src/PriceEngine.s"

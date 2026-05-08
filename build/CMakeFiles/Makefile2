@@ -85,12 +85,12 @@ clean: CMakeFiles/market-sim.dir/clean
 CMakeFiles/market-sim.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/market-sim.dir/build.make CMakeFiles/market-sim.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/market-sim.dir/build.make CMakeFiles/market-sim.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/ahaanshah/Documents/GitHub/market-sim/build/CMakeFiles --progress-num=1,2,3 "Built target market-sim"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/ahaanshah/Documents/GitHub/market-sim/build/CMakeFiles --progress-num=1,2,3,4 "Built target market-sim"
 .PHONY : CMakeFiles/market-sim.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/market-sim.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /Users/ahaanshah/Documents/GitHub/market-sim/build/CMakeFiles 3
+	$(CMAKE_COMMAND) -E cmake_progress_start /Users/ahaanshah/Documents/GitHub/market-sim/build/CMakeFiles 4
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/market-sim.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /Users/ahaanshah/Documents/GitHub/market-sim/build/CMakeFiles 0
 .PHONY : CMakeFiles/market-sim.dir/rule
@@ -102,7 +102,7 @@ market-sim: CMakeFiles/market-sim.dir/rule
 # codegen rule for target.
 CMakeFiles/market-sim.dir/codegen:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/market-sim.dir/build.make CMakeFiles/market-sim.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/ahaanshah/Documents/GitHub/market-sim/build/CMakeFiles --progress-num=1,2,3 "Finished codegen for target market-sim"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/ahaanshah/Documents/GitHub/market-sim/build/CMakeFiles --progress-num=1,2,3,4 "Finished codegen for target market-sim"
 .PHONY : CMakeFiles/market-sim.dir/codegen
 
 # clean rule for target.
