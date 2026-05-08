@@ -6,4 +6,4 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_compile_options(-Wall -Wextra -Wpedantic)
 
-add_executable(market-sim src/main.cpp src/PriceEngine.cpp)
+add_executable(market-sim src/main.cpp src/PriceEngine.cpp src/OrderBook.cpp)
