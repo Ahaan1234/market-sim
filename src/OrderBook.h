@@ -16,6 +16,9 @@ public:
     size_t bidDepth() const;
     size_t askDepth() const;
 
+    void removeQty(Side side, double price, double qty);
+    void clear();
+
     void printBook()  const;
 
     std::vector<std::pair<double,double>> bidLevels(size_t maxLevels) const;

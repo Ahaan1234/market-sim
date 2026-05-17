@@ -29,6 +29,7 @@ Simulation::Simulation(Config cfg)
 }
 
 void Simulation::runTick() {
+    book_.clear();
     priceEngine_.nextPrice();
     double mid = priceEngine_.currentPrice();
 

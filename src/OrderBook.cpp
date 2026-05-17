@@ -44,6 +44,25 @@ double OrderBook::spread()   const { return bestAsk() - bestBid(); }
 size_t OrderBook::bidDepth() const { return bids_.size(); }
 size_t OrderBook::askDepth() const { return asks_.size(); }
 
+void OrderBook::removeQty(Side side, double price, double qty) {
+    if (side == Side::BUY) {
+        auto it = bids_.find(price);
+        if (it == bids_.end()) return;
+        it->second -= qty;
+        if (it->second <= 0.0) bids_.erase(it);
+    } else {
+        auto it = asks_.find(price);
+        if (it == asks_.end()) return;
+        it->second -= qty;
+        if (it->second <= 0.0) asks_.erase(it);
+    }
+}
+
+void OrderBook::clear() {
+    bids_.clear();
+    asks_.clear();
+}
+
 std::vector<std::pair<double,double>> OrderBook::bidLevels(size_t maxLevels) const {
     std::vector<std::pair<double,double>> levels;
     for (auto& [price, qty] : bids_) {
