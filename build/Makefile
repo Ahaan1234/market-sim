@@ -117,24 +117,24 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named market-sim
+# Target rules for targets named quantsim
 
 # Build rule for target.
-market-sim: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 market-sim
-.PHONY : market-sim
+quantsim: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 quantsim
+.PHONY : quantsim
 
 # fast build rule for target.
-market-sim/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/market-sim.dir/build.make CMakeFiles/market-sim.dir/build
-.PHONY : market-sim/fast
+quantsim/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/build
+.PHONY : quantsim/fast
 
 src/OrderBook.o: src/OrderBook.cpp.o
 .PHONY : src/OrderBook.o
 
 # target to build an object file
 src/OrderBook.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/market-sim.dir/build.make CMakeFiles/market-sim.dir/src/OrderBook.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/OrderBook.cpp.o
 .PHONY : src/OrderBook.cpp.o
 
 src/OrderBook.i: src/OrderBook.cpp.i
@@ -142,7 +142,7 @@ src/OrderBook.i: src/OrderBook.cpp.i
 
 # target to preprocess a source file
 src/OrderBook.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/market-sim.dir/build.make CMakeFiles/market-sim.dir/src/OrderBook.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/OrderBook.cpp.i
 .PHONY : src/OrderBook.cpp.i
 
 src/OrderBook.s: src/OrderBook.cpp.s
@@ -150,7 +150,7 @@ src/OrderBook.s: src/OrderBook.cpp.s
 
 # target to generate assembly for a file
 src/OrderBook.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/market-sim.dir/build.make CMakeFiles/market-sim.dir/src/OrderBook.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/OrderBook.cpp.s
 .PHONY : src/OrderBook.cpp.s
 
 src/PriceEngine.o: src/PriceEngine.cpp.o
@@ -158,7 +158,7 @@ src/PriceEngine.o: src/PriceEngine.cpp.o
 
 # target to build an object file
 src/PriceEngine.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/market-sim.dir/build.make CMakeFiles/market-sim.dir/src/PriceEngine.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/PriceEngine.cpp.o
 .PHONY : src/PriceEngine.cpp.o
 
 src/PriceEngine.i: src/PriceEngine.cpp.i
@@ -166,7 +166,7 @@ src/PriceEngine.i: src/PriceEngine.cpp.i
 
 # target to preprocess a source file
 src/PriceEngine.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/market-sim.dir/build.make CMakeFiles/market-sim.dir/src/PriceEngine.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/PriceEngine.cpp.i
 .PHONY : src/PriceEngine.cpp.i
 
 src/PriceEngine.s: src/PriceEngine.cpp.s
@@ -174,15 +174,135 @@ src/PriceEngine.s: src/PriceEngine.cpp.s
 
 # target to generate assembly for a file
 src/PriceEngine.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/market-sim.dir/build.make CMakeFiles/market-sim.dir/src/PriceEngine.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/PriceEngine.cpp.s
 .PHONY : src/PriceEngine.cpp.s
+
+src/Simulation.o: src/Simulation.cpp.o
+.PHONY : src/Simulation.o
+
+# target to build an object file
+src/Simulation.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/Simulation.cpp.o
+.PHONY : src/Simulation.cpp.o
+
+src/Simulation.i: src/Simulation.cpp.i
+.PHONY : src/Simulation.i
+
+# target to preprocess a source file
+src/Simulation.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/Simulation.cpp.i
+.PHONY : src/Simulation.cpp.i
+
+src/Simulation.s: src/Simulation.cpp.s
+.PHONY : src/Simulation.s
+
+# target to generate assembly for a file
+src/Simulation.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/Simulation.cpp.s
+.PHONY : src/Simulation.cpp.s
+
+src/Trader.o: src/Trader.cpp.o
+.PHONY : src/Trader.o
+
+# target to build an object file
+src/Trader.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/Trader.cpp.o
+.PHONY : src/Trader.cpp.o
+
+src/Trader.i: src/Trader.cpp.i
+.PHONY : src/Trader.i
+
+# target to preprocess a source file
+src/Trader.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/Trader.cpp.i
+.PHONY : src/Trader.cpp.i
+
+src/Trader.s: src/Trader.cpp.s
+.PHONY : src/Trader.s
+
+# target to generate assembly for a file
+src/Trader.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/Trader.cpp.s
+.PHONY : src/Trader.cpp.s
+
+src/agents/MakerTrader.o: src/agents/MakerTrader.cpp.o
+.PHONY : src/agents/MakerTrader.o
+
+# target to build an object file
+src/agents/MakerTrader.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/agents/MakerTrader.cpp.o
+.PHONY : src/agents/MakerTrader.cpp.o
+
+src/agents/MakerTrader.i: src/agents/MakerTrader.cpp.i
+.PHONY : src/agents/MakerTrader.i
+
+# target to preprocess a source file
+src/agents/MakerTrader.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/agents/MakerTrader.cpp.i
+.PHONY : src/agents/MakerTrader.cpp.i
+
+src/agents/MakerTrader.s: src/agents/MakerTrader.cpp.s
+.PHONY : src/agents/MakerTrader.s
+
+# target to generate assembly for a file
+src/agents/MakerTrader.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/agents/MakerTrader.cpp.s
+.PHONY : src/agents/MakerTrader.cpp.s
+
+src/agents/TakerTrader.o: src/agents/TakerTrader.cpp.o
+.PHONY : src/agents/TakerTrader.o
+
+# target to build an object file
+src/agents/TakerTrader.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/agents/TakerTrader.cpp.o
+.PHONY : src/agents/TakerTrader.cpp.o
+
+src/agents/TakerTrader.i: src/agents/TakerTrader.cpp.i
+.PHONY : src/agents/TakerTrader.i
+
+# target to preprocess a source file
+src/agents/TakerTrader.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/agents/TakerTrader.cpp.i
+.PHONY : src/agents/TakerTrader.cpp.i
+
+src/agents/TakerTrader.s: src/agents/TakerTrader.cpp.s
+.PHONY : src/agents/TakerTrader.s
+
+# target to generate assembly for a file
+src/agents/TakerTrader.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/agents/TakerTrader.cpp.s
+.PHONY : src/agents/TakerTrader.cpp.s
+
+src/agents/WhaleTrader.o: src/agents/WhaleTrader.cpp.o
+.PHONY : src/agents/WhaleTrader.o
+
+# target to build an object file
+src/agents/WhaleTrader.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/agents/WhaleTrader.cpp.o
+.PHONY : src/agents/WhaleTrader.cpp.o
+
+src/agents/WhaleTrader.i: src/agents/WhaleTrader.cpp.i
+.PHONY : src/agents/WhaleTrader.i
+
+# target to preprocess a source file
+src/agents/WhaleTrader.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/agents/WhaleTrader.cpp.i
+.PHONY : src/agents/WhaleTrader.cpp.i
+
+src/agents/WhaleTrader.s: src/agents/WhaleTrader.cpp.s
+.PHONY : src/agents/WhaleTrader.s
+
+# target to generate assembly for a file
+src/agents/WhaleTrader.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/agents/WhaleTrader.cpp.s
+.PHONY : src/agents/WhaleTrader.cpp.s
 
 src/main.o: src/main.cpp.o
 .PHONY : src/main.o
 
 # target to build an object file
 src/main.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/market-sim.dir/build.make CMakeFiles/market-sim.dir/src/main.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/main.cpp.o
 .PHONY : src/main.cpp.o
 
 src/main.i: src/main.cpp.i
@@ -190,7 +310,7 @@ src/main.i: src/main.cpp.i
 
 # target to preprocess a source file
 src/main.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/market-sim.dir/build.make CMakeFiles/market-sim.dir/src/main.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/main.cpp.i
 .PHONY : src/main.cpp.i
 
 src/main.s: src/main.cpp.s
@@ -198,7 +318,7 @@ src/main.s: src/main.cpp.s
 
 # target to generate assembly for a file
 src/main.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/market-sim.dir/build.make CMakeFiles/market-sim.dir/src/main.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/main.cpp.s
 .PHONY : src/main.cpp.s
 
 # Help Target
@@ -209,13 +329,28 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
-	@echo "... market-sim"
+	@echo "... quantsim"
 	@echo "... src/OrderBook.o"
 	@echo "... src/OrderBook.i"
 	@echo "... src/OrderBook.s"
 	@echo "... src/PriceEngine.o"
 	@echo "... src/PriceEngine.i"
 	@echo "... src/PriceEngine.s"
+	@echo "... src/Simulation.o"
+	@echo "... src/Simulation.i"
+	@echo "... src/Simulation.s"
+	@echo "... src/Trader.o"
+	@echo "... src/Trader.i"
+	@echo "... src/Trader.s"
+	@echo "... src/agents/MakerTrader.o"
+	@echo "... src/agents/MakerTrader.i"
+	@echo "... src/agents/MakerTrader.s"
+	@echo "... src/agents/TakerTrader.o"
+	@echo "... src/agents/TakerTrader.i"
+	@echo "... src/agents/TakerTrader.s"
+	@echo "... src/agents/WhaleTrader.o"
+	@echo "... src/agents/WhaleTrader.i"
+	@echo "... src/agents/WhaleTrader.s"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"

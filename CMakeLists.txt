@@ -6,4 +6,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_compile_options(-Wall -Wextra -Wpedantic)
 
-add_executable(market-sim src/main.cpp src/PriceEngine.cpp src/OrderBook.cpp)
+add_executable(quantsim
+    src/main.cpp
+    src/PriceEngine.cpp
+    src/OrderBook.cpp
+    src/Trader.cpp
+    src/Simulation.cpp
+    src/agents/MakerTrader.cpp
+    src/agents/TakerTrader.cpp
+    src/agents/WhaleTrader.cpp
+)

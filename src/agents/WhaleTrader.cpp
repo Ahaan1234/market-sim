@@ -4,7 +4,6 @@ WhaleTrader::WhaleTrader(std::string id, double capital, unsigned int seed,
                          int interval, int jitter, double baseQty)
     : Trader(std::move(id), capital, seed)
     , interval_(interval)
-    , jitter_(jitter)
     , qty_(15.0 * baseQty)
     , nextActTick_(0)
     , jitterDist_(-jitter, jitter)

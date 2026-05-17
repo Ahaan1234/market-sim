@@ -6,7 +6,7 @@ MakerTrader::MakerTrader(std::string id, double capital, unsigned int seed,
 
 void MakerTrader::act(OrderBook& book, double midPrice, uint64_t tick) {
     (void)tick;
-    if (book.spread() > 2.0 * offset_ * midPrice)
+    if (book.spread() > 2.0 * offset_ * midPrice * (1.0 + 1e-6))
         return;
 
     book.addLimitOrder(Side::BUY,  midPrice * (1.0 - offset_), qty_);

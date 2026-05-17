@@ -11,7 +11,6 @@ public:
 
 private:
     int      interval_;
-    int      jitter_;
     double   qty_;
     uint64_t nextActTick_;
 
