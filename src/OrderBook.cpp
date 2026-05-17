@@ -44,6 +44,24 @@ double OrderBook::spread()   const { return bestAsk() - bestBid(); }
 size_t OrderBook::bidDepth() const { return bids_.size(); }
 size_t OrderBook::askDepth() const { return asks_.size(); }
 
+std::vector<std::pair<double,double>> OrderBook::bidLevels(size_t maxLevels) const {
+    std::vector<std::pair<double,double>> levels;
+    for (auto& [price, qty] : bids_) {
+        if (levels.size() >= maxLevels) break;
+        levels.emplace_back(price, qty);
+    }
+    return levels;
+}
+
+std::vector<std::pair<double,double>> OrderBook::askLevels(size_t maxLevels) const {
+    std::vector<std::pair<double,double>> levels;
+    for (auto& [price, qty] : asks_) {
+        if (levels.size() >= maxLevels) break;
+        levels.emplace_back(price, qty);
+    }
+    return levels;
+}
+
 void OrderBook::printBook() const {
     std::cout << "=== ORDER BOOK ===\n";
     for (auto it = asks_.rbegin(); it != asks_.rend(); ++it)

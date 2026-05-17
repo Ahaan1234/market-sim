@@ -18,6 +18,9 @@ public:
 
     void printBook()  const;
 
+    std::vector<std::pair<double,double>> bidLevels(size_t maxLevels) const;
+    std::vector<std::pair<double,double>> askLevels(size_t maxLevels) const;
+
 private:
     std::map<double, double, std::greater<double>> bids_;
     std::map<double, double>                       asks_;
