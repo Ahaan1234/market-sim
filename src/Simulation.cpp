@@ -59,7 +59,6 @@ void Simulation::drainOrderQueue() {
     while (auto item = orderQueue_.pop()) {
         IncomingOrder& o = *item;
 
-        // Validate
         if (o.qty <= 0.0) {
             emitReject(o.trader_id, o.order_id, "invalid_qty");
             continue;
@@ -75,7 +74,7 @@ void Simulation::drainOrderQueue() {
             trades = book_.addMarketOrder(o.side, o.qty);
         } else {
             book_.addLimitOrder(o.side, o.price, o.qty);
-            // Limit orders don't fill immediately in the current model
+            // Limit orders don't fill immediately in current model
         }
 
         for (const Trade& t : trades) {
@@ -89,6 +88,11 @@ void Simulation::drainOrderQueue() {
     }
 }
 
+static long long nowSeconds() {
+    return std::chrono::duration_cast<std::chrono::seconds>(
+               std::chrono::system_clock::now().time_since_epoch()).count();
+}
+
 void Simulation::emitFill(const std::string& trader_id, const std::string& order_id,
                            Side side, double price, double qty) {
     std::ostringstream oss;
@@ -98,6 +102,7 @@ void Simulation::emitFill(const std::string& trader_id, const std::string& order
         << ",\"side\":\""      << (side == Side::BUY ? "BUY" : "SELL") << "\""
         << ",\"price\":"       << price
         << ",\"qty\":"         << qty
+        << ",\"ts\":"          << nowSeconds()
         << "}\n";
     std::cout << oss.str();
     std::cout.flush();
@@ -110,6 +115,7 @@ void Simulation::emitReject(const std::string& trader_id, const std::string& ord
         << ",\"trader_id\":\"" << trader_id << "\""
         << ",\"order_id\":\""  << order_id  << "\""
         << ",\"reason\":\""    << reason    << "\""
+        << ",\"ts\":"          << nowSeconds()
         << "}\n";
     std::cout << oss.str();
     std::cout.flush();
@@ -120,21 +126,19 @@ void Simulation::emitTick() {
     auto ts  = std::chrono::duration_cast<std::chrono::seconds>(
                    now.time_since_epoch()).count();
 
-    double bid    = book_.bestBid();
-    double ask    = book_.bestAsk();
-    double spread = book_.spread();
+    double bid         = book_.bestBid();
+    double ask         = book_.bestAsk();
+    double spread      = book_.spread();
+    double curPrice    = priceEngine_.currentPrice();
 
     auto bids = book_.bidLevels(5);
     auto asks = book_.askLevels(5);
-
-    double currentPrice = priceEngine_.currentPrice();
-    auto   positions    = posTracker_.snapshot();
 
     std::ostringstream oss;
     oss << "{\"type\":\"tick\""
         << ",\"tick\":"   << tick_
         << ",\"ts\":"     << ts
-        << ",\"price\":"  << currentPrice
+        << ",\"price\":"  << curPrice
         << ",\"bid\":"    << bid
         << ",\"ask\":"    << ask
         << ",\"spread\":" << spread
@@ -152,21 +156,24 @@ void Simulation::emitTick() {
         oss << "{\"price\":" << asks[i].first << ",\"qty\":" << asks[i].second << "}";
     }
 
-    oss << "],\"positions\":[";
+    oss << "]";
 
-    for (size_t i = 0; i < positions.size(); ++i) {
-        const Position& p = positions[i];
-        if (i > 0) oss << ",";
-        oss << "{\"trader_id\":\""  << p.trader_id << "\""
-            << ",\"net_qty\":"      << p.net_qty
-            << ",\"avg_cost\":"     << p.avg_cost
-            << ",\"realised_pnl\":" << p.realised_pnl
-            << ",\"unrealised_pnl\":" << p.unrealisedPnL(currentPrice)
-            << ",\"total_fills\":"  << p.total_fills
-            << "}";
+    if (tick_ % 10 == 0) {
+        auto positions = posTracker_.snapshot();
+        oss << ",\"positions\":[";
+        for (size_t i = 0; i < positions.size(); ++i) {
+            const Position& p = positions[i];
+            if (i > 0) oss << ",";
+            oss << "{\"trader_id\":\""    << p.trader_id     << "\""
+                << ",\"net_qty\":"        << p.net_qty
+                << ",\"unrealised_pnl\":" << p.unrealisedPnL(curPrice)
+                << ",\"realised_pnl\":"   << p.realised_pnl
+                << "}";
+        }
+        oss << "]";
     }
 
-    oss << "]}\n";
+    oss << "}\n";
 
     std::cout << oss.str();
     std::cout.flush();
