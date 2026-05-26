@@ -12,7 +12,11 @@ add_executable(quantsim
     src/OrderBook.cpp
     src/Trader.cpp
     src/Simulation.cpp
+    src/PositionTracker.cpp
     src/agents/MakerTrader.cpp
     src/agents/TakerTrader.cpp
     src/agents/WhaleTrader.cpp
 )
+
+find_package(Threads REQUIRED)
+target_link_libraries(quantsim PRIVATE Threads::Threads)

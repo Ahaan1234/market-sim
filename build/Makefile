@@ -153,6 +153,30 @@ src/OrderBook.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/OrderBook.cpp.s
 .PHONY : src/OrderBook.cpp.s
 
+src/PositionTracker.o: src/PositionTracker.cpp.o
+.PHONY : src/PositionTracker.o
+
+# target to build an object file
+src/PositionTracker.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/PositionTracker.cpp.o
+.PHONY : src/PositionTracker.cpp.o
+
+src/PositionTracker.i: src/PositionTracker.cpp.i
+.PHONY : src/PositionTracker.i
+
+# target to preprocess a source file
+src/PositionTracker.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/PositionTracker.cpp.i
+.PHONY : src/PositionTracker.cpp.i
+
+src/PositionTracker.s: src/PositionTracker.cpp.s
+.PHONY : src/PositionTracker.s
+
+# target to generate assembly for a file
+src/PositionTracker.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quantsim.dir/build.make CMakeFiles/quantsim.dir/src/PositionTracker.cpp.s
+.PHONY : src/PositionTracker.cpp.s
+
 src/PriceEngine.o: src/PriceEngine.cpp.o
 .PHONY : src/PriceEngine.o
 
@@ -333,6 +357,9 @@ help:
 	@echo "... src/OrderBook.o"
 	@echo "... src/OrderBook.i"
 	@echo "... src/OrderBook.s"
+	@echo "... src/PositionTracker.o"
+	@echo "... src/PositionTracker.i"
+	@echo "... src/PositionTracker.s"
 	@echo "... src/PriceEngine.o"
 	@echo "... src/PriceEngine.i"
 	@echo "... src/PriceEngine.s"
