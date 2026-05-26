@@ -6,65 +6,14 @@
 #include <string>
 #include <thread>
 #include "OrderQueue.h"
+#include "Protocol.h"
 #include "Simulation.h"
 
+// Must be file-scope so the signal handler can reach it.
 static std::atomic<bool> g_running{true};
 
 static void handleSignal(int) {
-    g_running = false;
-}
-
-// Parse a quoted string value for a given key from a JSON line.
-// Returns "" if not found.
-static std::string jsonString(const std::string& line, const std::string& key) {
-    std::string needle = "\"" + key + "\":\"";
-    auto pos = line.find(needle);
-    if (pos == std::string::npos) return "";
-    pos += needle.size();
-    auto end = line.find('"', pos);
-    if (end == std::string::npos) return "";
-    return line.substr(pos, end - pos);
-}
-
-// Parse a numeric value for a given key from a JSON line.
-// Returns 0.0 if not found.
-static double jsonNumber(const std::string& line, const std::string& key) {
-    std::string needle = "\"" + key + "\":";
-    auto pos = line.find(needle);
-    if (pos == std::string::npos) return 0.0;
-    pos += needle.size();
-    // skip whitespace
-    while (pos < line.size() && line[pos] == ' ') ++pos;
-    try { return std::stod(line.substr(pos)); }
-    catch (...) { return 0.0; }
-}
-
-// Background thread: reads JSON lines from stdin and pushes to the queue.
-// Expected format (one JSON object per line):
-//   {"trader_id":"t1","order_id":"o1","side":"BUY","type":"LIMIT","price":100.5,"qty":2.0}
-static void stdinReader(OrderQueue& queue) {
-    std::string line;
-    while (std::getline(std::cin, line)) {
-        if (line.empty()) continue;
-
-        std::string trader_id = jsonString(line, "trader_id");
-        std::string order_id  = jsonString(line, "order_id");
-        std::string sideStr   = jsonString(line, "side");
-        std::string typeStr   = jsonString(line, "type");
-        double      price     = jsonNumber(line, "price");
-        double      qty       = jsonNumber(line, "qty");
-
-        if (trader_id.empty() || order_id.empty()) continue;
-
-        Side side;
-        if (sideStr == "BUY")       side = Side::BUY;
-        else if (sideStr == "SELL") side = Side::SELL;
-        else continue;  // invalid_side — drop silently; Simulation validates qty/price
-
-        OrderType type = (typeStr == "MARKET") ? OrderType::MARKET : OrderType::LIMIT;
-
-        queue.push({trader_id, order_id, side, type, price, qty});
-    }
+    g_running.store(false, std::memory_order_relaxed);
 }
 
 int main(int argc, char* argv[]) {
@@ -83,14 +32,31 @@ int main(int argc, char* argv[]) {
             cfg.numWhales = std::stoi(argv[++i]);
     }
 
-    OrderQueue queue;
+    OrderQueue orderQueue;
 
-    std::thread reader(stdinReader, std::ref(queue));
-    reader.detach();
+    // Background thread: reads JSON lines from stdin and pushes to the queue.
+    // stdout is never touched from this thread.
+    std::thread stdinThread([&]() {
+        try {
+            std::string line;
+            while (g_running.load(std::memory_order_relaxed) &&
+                   std::getline(std::cin, line)) {
+                if (line.empty()) continue;
+                auto order = protocol::parseIncomingOrder(line);
+                if (order.has_value()) {
+                    orderQueue.push(std::move(*order));
+                }
+                // silently discard malformed lines
+            }
+        } catch (...) {
+            // A crashed stdin thread must not bring down the process.
+        }
+    });
+    stdinThread.detach();
 
-    Simulation sim(cfg, queue);
+    Simulation sim(cfg, orderQueue);
 
-    while (g_running) {
+    while (g_running.load(std::memory_order_relaxed)) {
         sim.runTick();
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
