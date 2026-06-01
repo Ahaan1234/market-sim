@@ -1,106 +1,309 @@
 # market-sim
 
-A 24/7 live market simulation engine. Streams price ticks as newline-delimited JSON to stdout.
+A self-contained market simulation system. A C++ engine runs a synthetic order book and emits a live JSON event stream; a Go server broadcasts that stream over WebSockets, persists tick history in SQLite, and manages sandboxed Python trader processes in Docker.
 
 ---
 
-## What this project is, and how it works
+## Architecture
 
-### The big picture
+```
+┌─────────────────────────────────────────────────────────┐
+│                     Go Server (server/)                 │
+│                                                         │
+│  ┌──────────┐  ┌─────────┐  ┌───────────┐  ┌────────┐  │
+│  │ engine/  │  │  ws/    │  │ sandbox/  │  │  db/   │  │
+│  │ Runner   │  │  Hub    │  │ Manager   │  │ Store  │  │
+│  └────┬─────┘  └────┬────┘  └─────┬─────┘  └───┬────┘  │
+│       │stdout       │WS           │Unix sock    │SQLite │
+└───────┼─────────────┼─────────────┼─────────────┼───────┘
+        │             │             │             │
+  ┌─────┴──────┐  browser      sandbox        tick
+  │ C++ engine │  clients    containers      history
+  │ (quantsim) │
+  └────────────┘
+```
 
-This project simulates a financial market — specifically, the moment-to-moment price of a single asset (think of it like a stock). It doesn't connect to any real exchange. Instead, it generates a stream of synthetic prices using mathematics, printing one price per second, forever. The goal is to produce output that *looks and behaves* like a real market feed, so that a dashboard, chart, or server can consume it without knowing — or caring — whether the prices are real.
+The engine is the single source of truth. Everything else is wiring.
 
 ---
 
-### How prices move: the random walk
+## Components
 
-At the heart of the simulation is a concept called a **random walk**. The idea is simple:
+### 1. C++ Simulation Engine (`src/`)
 
-> The next price is the current price, shifted by a small random amount.
+The engine runs forever, emitting newline-delimited JSON events to stdout and accepting order JSON on stdin. It simulates:
 
-More precisely, at each step the program draws a random number `r` uniformly from the range **[-0.01, +0.01]** — meaning any value between -1% and +1% is equally likely. The new price is then:
+- **PriceEngine** — geometric random walk with configurable volatility, bid/ask spread, and a $10 price floor
+- **OrderBook** — price-time priority limit order book with market and limit order matching
+- **Three built-in agent types** running every tick:
+  - `MakerTrader` — posts resting limit orders on both sides of the book
+  - `TakerTrader` — crosses the spread with market orders
+  - `WhaleTrader` — places occasional large orders that move the price
+- **PositionTracker** — per-trader P&L accounting (realized and unrealized), volume-weighted average cost
+- **OrderQueue** — thread-safe queue bridging the stdin reader thread and the main simulation loop
+- **Protocol.h** — hand-rolled JSON parser for incoming orders; never throws
 
+#### Output events (stdout)
+
+**Tick** — emitted every simulation step:
+```json
+{
+  "type": "tick",
+  "tick": 42,
+  "ts": 1717200000,
+  "price": 103.45,
+  "bid": 103.20,
+  "ask": 103.70,
+  "spread": 0.50,
+  "positions": [
+    { "trader_id": "maker_0", "net_qty": 12.0, "unrealised_pnl": 4.20, "realised_pnl": 31.00 }
+  ]
+}
 ```
-new price = current price × (1 + r)
+
+`positions` is included only every 10 ticks.
+
+**Fill** — when an incoming order executes:
+```json
+{ "type": "fill", "trader_id": "my_bot", "order_id": "ord_001", "side": "BUY", "price": 103.20, "qty": 5.0, "ts": 1717200001 }
 ```
 
-For example, if the price is $100.00 and `r` happens to be +0.006:
-
+**Reject** — when an order is invalid or unexecutable:
+```json
+{ "type": "reject", "trader_id": "my_bot", "order_id": "ord_001", "reason": "insufficient_liquidity", "ts": 1717200001 }
 ```
-new price = 100.00 × 1.006 = $100.60
-```
 
-This is called a **multiplicative** random walk. The percentage move is random and bounded, but the dollar move scales with the price — a $10 asset and a $1000 asset both move at most 1% per tick, not the same fixed dollar amount. This matches how real asset prices behave.
-
-#### Why multiplicative, not additive?
-
-An additive walk would do `new price = current price + r`, where `r` is a fixed dollar amount. The problem is that prices would eventually drift negative. Multiplying instead of adding keeps prices strictly positive (they can approach zero but never cross it), which is mathematically consistent with how stocks, commodities, and currencies are modelled.
-
-#### The floor
-
-To prevent the price from collapsing toward zero in a long run of bad luck, a hard floor of **$10.00** is enforced. If a tick would push the price below that level, it is clamped to $10.00.
-
----
-
-### Randomness and reproducibility
-
-The random numbers come from a **Mersenne Twister** — a widely used algorithm that produces a long sequence of pseudo-random numbers from a starting value called a **seed**. The seed is fixed (`42`), which means:
-
-- Every run of the program produces *exactly the same sequence of prices*.
-- This is intentional: reproducibility lets you test and debug downstream systems (charts, servers) without the data changing under you.
-
-To get a different price path, you would change the seed.
-
----
-
-### The output format
-
-Each tick is printed as a single line of **JSON** — a lightweight, human-readable data format that nearly every programming language and tool can parse:
+#### Input orders (stdin)
 
 ```json
-{"tick":1,"price":100.59,"ts":1778064686}
+{ "trader_id": "my_bot", "order_id": "ord_001", "side": "BUY", "type": "LIMIT", "price": 103.00, "qty": 5.0 }
 ```
 
-| Field  | Meaning |
-|--------|---------|
-| `tick` | How many steps have elapsed since the simulation started |
-| `price`| The current simulated asset price in dollars |
-| `ts`   | A Unix timestamp — the number of seconds since 1 January 1970, incremented by 1 per tick |
+`type` is `"LIMIT"` or `"MARKET"`. For market orders, `price` is ignored.
 
-The timestamp is synthetic (not real wall-clock time), but it increases by exactly one second per tick. This gives downstream consumers — a charting library, a database, a WebSocket server — a consistent time axis to plot or index against.
+#### CLI flags
 
----
+```
+--makers N     number of maker agents   (default: 3)
+--takers N     number of taker agents   (default: 2)
+--whales N     number of whale agents   (default: 1)
+--tick-ms N    milliseconds per tick    (default: 500)
+```
 
-### What has been built so far
+### 2. Go WebSocket Server (`server/`)
 
-| Component | What it does |
-|-----------|-------------|
-| `PriceEngine` | Holds the current price and the random number generator. Exposes a single `nextPrice()` call that advances one tick and returns the new price. |
-| `main.cpp` | Calls `nextPrice()` 1000 times in a loop, formats each result as JSON with a synthetic timestamp, and prints it to the terminal. |
-| `CMakeLists.txt` | Build instructions. Tells the compiler to use C++17 and to flag any code quality warnings. |
+Runs the C++ engine as a managed subprocess and exposes its event stream over HTTP/WebSocket.
 
----
+#### `engine/runner.go`
 
-### What comes next
+Launches `quantsim` as a child process, reads stdout line by line, and forwards events to an internal channel. Auto-restarts on crash with a 2-second delay. Writes incoming orders to the engine's stdin (thread-safe).
 
-The 1000-tick JSON stream printed to the terminal is the **contract** between this engine and the rest of the system. Future sessions will build:
+#### `ws/hub.go`
 
-- A **Go server** that runs the engine as a subprocess and forwards its output over **WebSockets** to a browser in real time.
-- A **browser dashboard** with live candlestick charts, order book depth, and market statistics — all fed by this stream.
+Gorilla WebSocket hub. Accepts browser connections, fans out every engine event to all connected clients. Slow clients are evicted rather than blocking the broadcaster. Incoming browser messages are validated and translated to engine order format before being forwarded.
+
+**Browser → server order format:**
+```json
+{ "type": "order", "trader_id": "...", "order_id": "...", "side": "BUY", "order_type": "LIMIT", "price": 103.00, "qty": 5.0 }
+```
+
+(Note: browsers send `order_type`; the server renames it to `type` before writing to the engine.)
+
+#### `db/store.go`
+
+SQLite store with WAL mode. Persists every tick event; trims to the latest 10,000 rows asynchronously. Serves historical data oldest-first via `History(limit)`.
+
+#### REST endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/history?limit=N` | Last N ticks (max 1000, default 200), oldest-first |
+| `GET` | `/api/traders` | List all sandbox traders |
+| `POST` | `/api/traders` | Spawn a new trader sandbox |
+| `GET` | `/api/traders/<id>` | Get sandbox info |
+| `GET` | `/api/traders/<id>/log` | Last 100 lines of container output |
+| `DELETE` | `/api/traders/<id>` | Stop and remove a sandbox |
+| `GET` | `/ws` | WebSocket upgrade — streams all engine events |
+| `GET` | `/` | Static files from `server/static/` |
+
+### 3. Sandbox System (`server/sandbox/`)
+
+Each trader script runs in an isolated Docker container with no network access, a read-only filesystem, and resource limits.
+
+#### `sandbox/relay.go`
+
+Unix-socket relay between the engine and sandbox containers. Runs a `fanOut` goroutine that routes:
+- **Tick events** → broadcast to all connected sandboxes
+- **Fill/reject events** → routed only to the matching `trader_id`
+
+Each container gets its own Unix socket at `/tmp/quantsim-sockets/<trader_id>/quantsim.sock` on the host, mounted as `/tmp/quantsim.sock` inside the container. Rate limiting: >10 orders/second → `reject` with `"reason":"rate_limited"`.
+
+#### `sandbox/manager.go`
+
+Manages the Docker container lifecycle:
+- Validates `trader_id` (`^[a-zA-Z0-9_-]{3,32}$`) and script size (≤50 KB)
+- Enforces a cap of **5 concurrent sandboxes**
+- Writes the trader script to `/tmp/quantsim-scripts/<trader_id>/trader.py` (mode 0444)
+- Creates a Docker container with: no network, read-only rootfs, 128 MB RAM, 0.5 CPU, auto-remove
+- Monitors container health every 5 seconds; auto-kills after 24 hours
+- Cleans up script and socket directories on stop
+
+#### `sandbox-image/`
+
+The Docker image every trader container runs:
+
+```
+FROM python:3.12-slim
+```
+
+The `quantsim` Python SDK is pre-installed. Trader scripts find the socket path via:
+
+```python
+import quantsim
+# quantsim.SOCKET_PATH = os.environ["QUANTSIM_SOCKET"]  →  /tmp/quantsim.sock
+```
 
 ---
 
 ## Build
 
+### Prerequisites
+
+- CMake ≥ 3.16
+- C++17 compiler (clang++ or g++)
+- Go ≥ 1.21
+- Docker (running)
+
+### C++ engine
+
 ```bash
-mkdir -p build && cd build
-cmake .. && make
+cmake -S . -B build
+cmake --build build
+# binary: build/quantsim
 ```
+
+### Go server
+
+```bash
+cd server
+go build -o quantsim-server .
+```
+
+### Docker sandbox image
+
+```bash
+cd server/sandbox-image
+docker build -t quantsim-sandbox:latest .
+```
+
+---
 
 ## Run
 
+### Engine only (testing/debugging)
+
 ```bash
-./market-sim          # all 1000 ticks
-./market-sim | less   # page through (press q to exit)
-./market-sim | head -20
+./build/quantsim --tick-ms 200 --makers 4 --takers 3
+```
+
+Pipe in orders interactively:
+```bash
+echo '{"trader_id":"me","order_id":"1","side":"BUY","type":"MARKET","qty":10}' | ./build/quantsim
+```
+
+### Full server
+
+```bash
+cd server
+./quantsim-server \
+  --engine ../build/quantsim \
+  --db ./quantsim.db \
+  --port 8080 \
+  --tick-ms 500
+```
+
+WebSocket clients connect to `ws://localhost:8080/ws` and receive the live event stream.
+
+---
+
+## Trader sandbox API
+
+**Spawn a trader:**
+```bash
+curl -X POST http://localhost:8080/api/traders \
+  -H "Content-Type: application/json" \
+  -d '{"trader_id": "my_bot", "script": "import time\nwhile True: time.sleep(1)"}'
+# → {"trader_id":"my_bot","status":"spawning"}
+```
+
+**List all traders:**
+```bash
+curl http://localhost:8080/api/traders
+```
+
+**Check logs:**
+```bash
+curl http://localhost:8080/api/traders/my_bot/log
+```
+
+**Stop a trader:**
+```bash
+curl -X DELETE http://localhost:8080/api/traders/my_bot
+```
+
+**Error responses** (HTTP 400):
+- `invalid_trader_id` — doesn't match `^[a-zA-Z0-9_-]{3,32}$`
+- `script_too_large` — exceeds 50 KB
+- `too_many_sandboxes` — 5 already running
+- `duplicate_trader_id` — already exists
+
+---
+
+## Wire protocol summary
+
+```
+engine stdout  →  Go server  →  /ws WebSocket  →  browser
+engine stdout  →  Go server  →  Unix socket    →  sandbox container
+browser        →  /ws        →  Go server      →  engine stdin
+sandbox        →  Unix sock  →  relay          →  engine stdin
+```
+
+All messages are newline-delimited JSON in both directions.
+
+---
+
+## Project layout
+
+```
+market-sim/
+├── src/
+│   ├── main.cpp
+│   ├── PriceEngine.{h,cpp}
+│   ├── OrderBook.{h,cpp}
+│   ├── OrderQueue.h
+│   ├── Protocol.h
+│   ├── PositionTracker.{h,cpp}
+│   ├── Simulation.{h,cpp}
+│   ├── Trader.{h,cpp}
+│   └── agents/
+│       ├── MakerTrader.{h,cpp}
+│       ├── TakerTrader.{h,cpp}
+│       └── WhaleTrader.{h,cpp}
+├── server/
+│   ├── main.go
+│   ├── engine/runner.go
+│   ├── ws/hub.go
+│   ├── db/store.go
+│   ├── api/handlers.go
+│   ├── sandbox/
+│   │   ├── types.go
+│   │   ├── relay.go
+│   │   └── manager.go
+│   ├── sandbox-image/
+│   │   ├── Dockerfile
+│   │   └── quantsim_sdk/
+│   │       └── quantsim/__init__.py
+│   └── static/           ← frontend goes here
+├── CMakeLists.txt
+└── readme.md
 ```
