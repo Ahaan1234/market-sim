@@ -12,6 +12,7 @@ import (
 	"quantsim-server/api"
 	"quantsim-server/db"
 	"quantsim-server/engine"
+	"quantsim-server/sandbox"
 	"quantsim-server/ws"
 )
 
@@ -40,6 +41,14 @@ func main() {
 	hub := ws.NewHub(runner)
 	go hub.Run()
 
+	// ── Sandbox relay + manager ──────────────────────────────────────────────
+	relay := sandbox.NewRelay(runner)
+
+	sandboxMgr, err := sandbox.NewManager(relay, eventChan)
+	if err != nil {
+		log.Fatalf("sandbox: %v", err)
+	}
+
 	// ── Context wired to OS signals ──────────────────────────────────────────
 	ctx, cancel := signal.NotifyContext(
 		context.Background(), os.Interrupt, syscall.SIGTERM,
@@ -49,10 +58,14 @@ func main() {
 	// ── Start engine (auto-restarts on crash) ────────────────────────────────
 	go runner.Start(ctx)
 
-	// ── Fan events from engine → hub + DB ───────────────────────────────────
+	// ── Fan events from engine → hub + relay + DB ────────────────────────────
 	go func() {
 		for ev := range eventChan {
 			hub.Broadcast(ev.Raw)
+			select {
+			case relay.TickSub() <- ev.Raw:
+			default:
+			}
 			if ev.Type == "tick" {
 				if err := store.StoreTick(ev.Raw); err != nil {
 					log.Printf("db: StoreTick: %v", err)
@@ -65,6 +78,8 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", hub.ServeWS)
 	mux.HandleFunc("/api/history", api.HistoryHandler(store))
+	mux.HandleFunc("/api/traders", api.TraderHandler(sandboxMgr))
+	mux.HandleFunc("/api/traders/", api.TraderHandler(sandboxMgr))
 	mux.Handle("/", http.FileServer(http.Dir("./static")))
 
 	srv := &http.Server{Addr: ":" + *port, Handler: mux}
@@ -78,6 +93,7 @@ func main() {
 	// ── Wait for shutdown signal ─────────────────────────────────────────────
 	<-ctx.Done()
 	log.Println("server: shutting down")
+	sandboxMgr.KillAll()
 	srv.Shutdown(context.Background())
 	store.Close()
 }
