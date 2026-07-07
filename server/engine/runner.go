@@ -9,6 +9,7 @@ import (
 	"log"
 	"os/exec"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -24,7 +25,8 @@ type Runner struct {
 	args       []string
 	eventChan  chan<- Event
 	stdinPipe  io.WriteCloser
-	mu         sync.Mutex // guards stdinPipe
+	cmd        *exec.Cmd
+	mu         sync.Mutex // guards stdinPipe, cmd, args
 }
 
 // NewRunner creates a Runner. Call Start in a goroutine to launch the process.
@@ -63,9 +65,39 @@ func (r *Runner) Start(ctx context.Context) {
 	}
 }
 
+// SetArgs replaces the engine's launch arguments. Takes effect on the next
+// (re)start — call Restart to apply immediately.
+func (r *Runner) SetArgs(args []string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.args = append([]string(nil), args...)
+}
+
+// Args returns a copy of the current launch arguments.
+func (r *Runner) Args() []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]string(nil), r.args...)
+}
+
+// Restart terminates the running engine process. The Start loop relaunches
+// it (with the current args) after its usual restart delay.
+func (r *Runner) Restart() error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.cmd == nil || r.cmd.Process == nil {
+		return fmt.Errorf("engine not running")
+	}
+	return r.cmd.Process.Signal(syscall.SIGTERM)
+}
+
 // run starts one instance of the engine process and blocks until it exits.
 func (r *Runner) run(ctx context.Context) error {
-	cmd := exec.CommandContext(ctx, r.binaryPath, r.args...)
+	r.mu.Lock()
+	args := append([]string(nil), r.args...)
+	r.mu.Unlock()
+
+	cmd := exec.CommandContext(ctx, r.binaryPath, args...)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -87,6 +119,7 @@ func (r *Runner) run(ctx context.Context) error {
 
 	r.mu.Lock()
 	r.stdinPipe = stdin
+	r.cmd = cmd
 	r.mu.Unlock()
 
 	// Log engine's stderr without blocking the stdout reader.
@@ -116,6 +149,7 @@ func (r *Runner) run(ctx context.Context) error {
 
 	r.mu.Lock()
 	r.stdinPipe = nil
+	r.cmd = nil
 	r.mu.Unlock()
 
 	return cmd.Wait()

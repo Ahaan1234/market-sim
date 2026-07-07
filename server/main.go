@@ -20,8 +20,15 @@ func main() {
 	enginePath := flag.String("engine", "../build/quantsim", "path to C++ engine binary")
 	dbPath     := flag.String("db", "./quantsim.db", "SQLite database path")
 	port       := flag.String("port", "8080", "HTTP listen port")
-	tickMs     := flag.String("tick-ms", "500", "engine tick interval ms (passed to engine)")
+	tickMs     := flag.Int("tick-ms", 500, "engine tick interval ms (passed to engine)")
+	makers     := flag.Int("makers", 10, "number of maker agents")
+	takers     := flag.Int("takers", 20, "number of taker agents")
+	whales     := flag.Int("whales", 2, "number of whale agents")
 	flag.Parse()
+
+	initialCfg := api.EngineConfig{
+		Makers: *makers, Takers: *takers, Whales: *whales, TickMs: *tickMs,
+	}
 
 	// ── Database ────────────────────────────────────────────────────────────
 	store, err := db.NewStore(*dbPath)
@@ -33,7 +40,7 @@ func main() {
 	eventChan := make(chan engine.Event, 500)
 	runner := engine.NewRunner(
 		*enginePath,
-		[]string{"--tick-ms", *tickMs},
+		initialCfg.Args(),
 		eventChan,
 	)
 
@@ -78,6 +85,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", hub.ServeWS)
 	mux.HandleFunc("/api/history", api.HistoryHandler(store))
+	mux.HandleFunc("/api/config", api.ConfigHandler(runner, initialCfg))
 	mux.HandleFunc("/api/traders", api.TraderHandler(sandboxMgr))
 	mux.HandleFunc("/api/traders/", api.TraderHandler(sandboxMgr))
 	mux.Handle("/", http.FileServer(http.Dir("./static")))

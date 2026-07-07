@@ -5,8 +5,10 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 
 	"quantsim-server/db"
+	"quantsim-server/engine"
 	"quantsim-server/sandbox"
 )
 
@@ -42,6 +44,92 @@ func HistoryHandler(store *db.Store) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "no-store")
 		w.Write(data)
+	}
+}
+
+// EngineConfig is the runtime-adjustable agent population and tick rate.
+type EngineConfig struct {
+	Makers int `json:"makers"`
+	Takers int `json:"takers"`
+	Whales int `json:"whales"`
+	TickMs int `json:"tick_ms"`
+}
+
+// Args renders the config as engine CLI arguments.
+func (c EngineConfig) Args() []string {
+	return []string{
+		"--makers", strconv.Itoa(c.Makers),
+		"--takers", strconv.Itoa(c.Takers),
+		"--whales", strconv.Itoa(c.Whales),
+		"--tick-ms", strconv.Itoa(c.TickMs),
+	}
+}
+
+func (c EngineConfig) validate() string {
+	if c.Makers < 0 || c.Makers > 50 {
+		return "makers must be 0-50"
+	}
+	if c.Takers < 0 || c.Takers > 50 {
+		return "takers must be 0-50"
+	}
+	if c.Whales < 0 || c.Whales > 20 {
+		return "whales must be 0-20"
+	}
+	if c.TickMs < 50 || c.TickMs > 5000 {
+		return "tick_ms must be 50-5000"
+	}
+	return ""
+}
+
+// ConfigHandler serves GET/POST /api/config. A POST replaces the agent
+// population and restarts the engine with the new arguments — the market
+// resets, which is the point of the analysis-mode experiment.
+func ConfigHandler(runner *engine.Runner, initial EngineConfig) http.HandlerFunc {
+	var mu sync.Mutex
+	current := initial
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		switch r.Method {
+		case http.MethodGet:
+			mu.Lock()
+			cfg := current
+			mu.Unlock()
+			json.NewEncoder(w).Encode(cfg)
+
+		case http.MethodPost:
+			var req EngineConfig
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(map[string]string{"error": "invalid_json"})
+				return
+			}
+			if msg := req.validate(); msg != "" {
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(map[string]string{"error": msg})
+				return
+			}
+
+			mu.Lock()
+			current = req
+			mu.Unlock()
+
+			runner.SetArgs(req.Args())
+			if err := runner.Restart(); err != nil {
+				// Engine between restarts — new args apply when it comes up.
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"config": req, "note": "engine not running; args apply on next start",
+				})
+				return
+			}
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"config": req, "restarting": true,
+			})
+
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
 	}
 }
 

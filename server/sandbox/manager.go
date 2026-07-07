@@ -24,7 +24,6 @@ const (
 	maxScriptBytes         = 50 * 1024
 	autoKillAfter          = 24 * time.Hour
 	sandboxImageName       = "quantsim-sandbox:latest"
-	socketBasePath         = "/tmp/quantsim-sockets"
 	scriptBasePath         = "/tmp/quantsim-scripts"
 )
 
@@ -32,7 +31,6 @@ var traderIDRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]{3,32}$`)
 
 type sandboxEntry struct {
 	info      SandboxInfo
-	socketDir string
 	scriptDir string
 	cancel    context.CancelFunc
 }
@@ -116,25 +114,13 @@ func (m *Manager) Spawn(traderID, scriptContent string) error {
 	}
 	entry.scriptDir = scriptDir
 
-	// Create socket directory.
-	socketDir := filepath.Join(socketBasePath, traderID)
-	if err := os.MkdirAll(socketDir, 0755); err != nil {
-		m.setError(traderID, cancel, fmt.Sprintf("mkdir socket: %v", err))
-		return fmt.Errorf("mkdir socket dir: %w", err)
-	}
-	socketPath := filepath.Join(socketDir, "quantsim.sock")
-	entry.socketDir = socketDir
-
-	// Start relay listener before the container starts connecting.
-	go m.relay.ListenForSandbox(ctx, traderID, socketPath)
-	time.Sleep(100 * time.Millisecond)
-
-	// Create and start container.
+	// Create the container with an open stdin: the relay bridges engine
+	// events → container stdin and container stdout → engine orders.
 	cfg := &container.Config{
-		Image: sandboxImageName,
+		Image:     sandboxImageName,
+		OpenStdin: true,
 		Env: []string{
 			"TRADER_ID=" + traderID,
-			"QUANTSIM_SOCKET=/tmp/quantsim.sock",
 		},
 		Labels: map[string]string{
 			"quantsim-sandbox": "true",
@@ -149,17 +135,15 @@ func (m *Manager) Spawn(traderID, scriptContent string) error {
 			Memory:   128 << 20,
 			NanoCPUs: 500_000_000,
 		},
+		Tmpfs: map[string]string{
+			"/tmp": "rw,size=16m",
+		},
 		Mounts: []mount.Mount{
 			{
 				Type:     mount.TypeBind,
 				Source:   scriptPath,
 				Target:   "/script/trader.py",
 				ReadOnly: true,
-			},
-			{
-				Type:   mount.TypeBind,
-				Source: socketDir,
-				Target: "/tmp",
 			},
 		},
 	}
@@ -169,6 +153,19 @@ func (m *Manager) Spawn(traderID, scriptContent string) error {
 		m.setError(traderID, cancel, fmt.Sprintf("container create: %v", err))
 		return fmt.Errorf("container create: %w", err)
 	}
+
+	// Attach before starting so no early output is missed.
+	attach, err := m.dockerClient.ContainerAttach(ctx, resp.ID, container.AttachOptions{
+		Stream: true,
+		Stdin:  true,
+		Stdout: true,
+		Stderr: true,
+	})
+	if err != nil {
+		m.setError(traderID, cancel, fmt.Sprintf("container attach: %v", err))
+		return fmt.Errorf("container attach: %w", err)
+	}
+	go m.relay.HandleSandbox(ctx, traderID, attach.Conn, attach.Reader)
 
 	if err := m.dockerClient.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
 		m.setError(traderID, cancel, fmt.Sprintf("container start: %v", err))
@@ -269,9 +266,6 @@ func (m *Manager) cleanup(traderID string) {
 	}
 	if entry.scriptDir != "" {
 		os.RemoveAll(entry.scriptDir)
-	}
-	if entry.socketDir != "" {
-		os.RemoveAll(entry.socketDir)
 	}
 }
 
